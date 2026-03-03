@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCT AI Challenge — AIOps Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">FCT AI CHALLENGE <span>// AIOPS</span></div>
+    <div class="badge badge-blue" id="mode-badge">AUTONOMOUS</div>
+    <div class="badge badge-green" id="closing-badge" style="display:none">CLOSING DAY</div>
+    <div class="badge badge-yellow" id="peak-badge" style="display:none">PEAK WINDOW</div>
+    <div class="badge badge-red" id="hold-badge" style="display:none">POLICY HOLD</div>
+  </div>
+  <div class="topbar-center">
+    <div class="health-score">
+      <div>
+        <div class="health-score-num" id="health-score">—</div>
+        <div class="health-score-label">System Health</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div id="next-peak" style="font-size:10px;color:var(--text-dim)">Calculating next peak...</div>
+  </div>
+  <div class="topbar-right">
+    <div class="clock" id="clock">00:00:00 UTC</div>
+    <div class="auto-toggle" onclick="toggleAutonomous()">
+      <div class="toggle-dot" id="auto-dot"></div>
+      <span id="auto-label">Auto</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- LEFT: Service Map + Controls -->
+  <div class="panel">
+    <div class="panel-title">Service Health Map</div>
+
+    <div class="service-map-container">
+      <div id="service-svg-container">
+        <svg id="service-map-svg" viewBox="0 0 360 310" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#555" opacity="0.8"/>
+            </marker>
+            <filter id="glow-green">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glow-red">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Dependency arrows -->
+          <line class="dep-arrow" x1="120" y1="73" x2="10" y2="73" marker-end="url(#arrowhead)"/>
+          <line class="dep-arrow" x1="230" y1="63" x2="250" y2="63" marker-end="url(#arrowhead)"/>
+          <path class="dep-arrow" d="M 230,80 Q 240,80 250,140" marker-end="url(#arrowhead)"/>
+          <line class="dep-arrow" x1="175" y1="145" x2="175" y2="91" marker-end="url(#arrowhead)"/>
+          <line class="dep-arrow" x1="120" y1="163" x2="10" y2="163" marker-end="url(#arrowhead)"/>
+
+          <!-- fraud-screening-service -->
+          <g id="node-fraud-screening-service" class="svc-node" data-service="fraud-screening-service">
+            <rect class="svc-rect" x="10" y="37" width="110" height="52"
+                  fill="#131e33" stroke="#8b5cf6" id="rect-fraud-screening-service"/>
+            <text class="svc-text" x="65" y="53" id="name-fraud-screening-service">fraud-screen</text>
+            <text class="svc-metric" x="65" y="66" id="metric-fraud-screening-service">cov: 99.8%</text>
+            <text class="svc-badge-text" x="65" y="80">◈ FINTRAC</text>
+          </g>
+
+          <!-- policy-issuance-service -->
+          <g id="node-policy-issuance-service" class="svc-node" data-service="policy-issuance-service">
+            <rect class="svc-rect" x="120" y="37" width="110" height="52"
+                  fill="#131e33" stroke="#2563eb" id="rect-policy-issuance-service"/>
+            <text class="svc-text" x="175" y="55" id="name-policy-issuance-service">policy-issuance</text>
+            <text class="svc-metric" x="175" y="68" id="metric-policy-issuance-service">lat: 820ms</text>
+            <text class="svc-metric" x="175" y="80" style="fill:#1e3052">▼ depends on 3</text>
+          </g>
+
+          <!-- title-search-service -->
+          <g id="node-title-search-service" class="svc-node" data-service="title-search-service">
+            <rect class="svc-rect" x="240" y="37" width="110" height="52"
+                  fill="#131e33" stroke="#2563eb" id="rect-title-search-service"/>
+            <text class="svc-text" x="295" y="55" id="name-title-search-service">title-search</text>
+            <text class="svc-metric" x="295" y="68" id="metric-title-search-service">lat: 1200ms</text>
+            <text class="svc-metric" x="295" y="80" style="fill:#f59e0b;font-size:7px">external API</text>
+          </g>
+
+          <!-- document-vault-service -->
+          <g id="node-document-vault-service" class="svc-node" data-service="document-vault-service">
+            <rect class="svc-rect" x="10" y="127" width="110" height="52"
+                  fill="#131e33" stroke="#2563eb" id="rect-document-vault-service"/>
+            <text class="svc-text" x="65" y="145" id="name-document-vault-service">doc-vault</text>
+            <text class="svc-metric" x="65" y="158" id="metric-document-vault-service">disk: 65%</text>
+            <text class="svc-metric" x="65" y="170" style="fill:#1e3052">43k lawyers</text>
+          </g>
+
+          <!-- mortgage-processing-service -->
+          <g id="node-mortgage-processing-service" class="svc-node" data-service="mortgage-processing-service">
+            <rect class="svc-rect" x="120" y="127" width="110" height="52"
+                  fill="#131e33" stroke="#2563eb" id="rect-mortgage-processing-service"/>
+            <text class="svc-text" x="175" y="145" id="name-mortgage-processing-service">mortgage-proc</text>
+            <text class="svc-metric" x="175" y="158" id="metric-mortgage-processing-service">rate: 72/min</text>
+            <text class="svc-metric" x="175" y="170" style="fill:#1e3052">450 lenders</text>
+          </g>
+
+          <!-- identity-verification-service -->
+          <g id="node-identity-verification-service" class="svc-node" data-service="identity-verification-service">
+            <rect class="svc-rect" x="240" y="127" width="110" height="52"
+                  fill="#131e33" stroke="#2563eb" id="rect-identity-verification-service"/>
+            <text class="svc-text" x="295" y="145" id="name-identity-verification-service">identity-verify</text>
+            <text class="svc-metric" x="295" y="158" id="metric-identity-verification-service">queue: 12</text>
+            <text class="svc-metric" x="295" y="170" style="fill:#1e3052">KYC/AML</text>
+          </g>
+
+          <!-- property-intelligence-api -->
+          <g id="node-property-intelligence-api" class="svc-node" data-service="property-intelligence-api">
+            <rect class="svc-rect" x="120" y="230" width="110" height="52"
+                  fill="#131e33" stroke="#06b6d4" id="rect-property-intelligence-api"/>
+            <text class="svc-text" x="175" y="248" id="name-property-intelligence-api">property-intel</text>
+            <text class="svc-metric" x="175" y="261" id="metric-property-intelligence-api">rate: 340/min</text>
+            <text class="svc-metric" x="175" y="273" style="fill:#06b6d4;font-size:7px">external-facing</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Compliance Status -->
+    <div class="compliance-bar" id="compliance-bar">
+      <div class="compliance-header">
+        <div class="compliance-title">◈ Fraud Screen Coverage (FINTRAC)</div>
+        <div class="coverage-value" id="coverage-value" style="color:var(--green)">99.8%</div>
+      </div>
+      <div class="compliance-bar-track">
+        <div class="compliance-bar-fill" id="coverage-fill" style="width:99.8%;background:var(--green)"></div>
+      </div>
+      <div class="compliance-threshold-label">
+        <span id="coverage-trend">Trend: stable</span>
+        <span id="coverage-threshold">Min: 95.0%</span>
+      </div>
+    </div>
+
+    <!-- Policy Hold Banner -->
+    <div class="policy-hold-banner" id="policy-hold-banner">
+      ⚠ POLICY HOLD ACTIVE — New policy issuance suspended (FINTRAC compliance incident)
+    </div>
+
+    <!-- Active Faults -->
+    <div class="panel-title">Active Fault Scenarios</div>
+    <div class="faults-list" id="faults-list">
+      <div style="font-size:10px;color:var(--text-dim);text-align:center;padding:8px">No active faults</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel-title">Manual Controls</div>
+    <div class="controls">
+      <div class="controls-row">
+        <select class="inject-select" id="scenario-select">
+          <option value="">Select scenario...</option>
+        </select>
+        <button class="btn-inject" onclick="injectSelected()">⚡ Inject</button>
+      </div>
+      <div class="controls-row">
+        <button class="btn btn-danger" onclick="fetch('/api/simulate-peak',{method:'POST'})">
+          📈 Friday Surge
+        </button>
+        <button class="btn btn-purple" onclick="fetch('/api/trigger-compliance',{method:'POST'})">
+          ◈ Compliance Incident
+        </button>
+      </div>
+      <div class="controls-row">
+        <button class="btn btn-orange" onclick="fetch('/api/resolve-all',{method:'POST'})">
+          ✓ Resolve All Faults
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Live Metrics -->
+  <div class="panel">
+    <div class="panel-title">Live Service Metrics <span style="color:var(--text-dim);font-weight:400">— updates every 3s</span></div>
+    <div class="metrics-grid" id="metrics-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- RIGHT: Activity Feed -->
+  <div class="panel">
+    <div class="panel-title">FCT AI Activity Feed</div>
+    <div class="activity-feed" id="activity-feed">
+      <div style="font-size:10px;color:var(--text-dim);text-align:center;padding:16px">
+        FCT AI initializing...<br>Training anomaly models on baseline data.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ BOTTOM BAR ══ -->
+<div class="bottombar">
+  <div class="counter">
+    <div class="counter-value" id="cnt-transactions" style="color:var(--accent-blue)">0</div>
+    <div class="counter-label">Transactions Today</div>
+  </div>
+  <div class="counter">
+    <div class="counter-value" id="cnt-policies" style="color:var(--accent-cyan)">0</div>
+    <div class="counter-label">Policies Issued</div>
+  </div>
+  <div class="counter fraud-counter">
+    <div class="counter-value" id="cnt-fraud">0</div>
+    <div class="counter-label">Fraud Screens</div>
+  </div>
+  <div class="counter">
+    <div class="counter-value" id="cnt-coverage" style="color:var(--green)">99.8%</div>
+    <div class="counter-label">Screen Coverage</div>
+  </div>
+  <div class="counter risk-counter">
+    <div class="counter-value" id="cnt-at-risk">0</div>
+    <div class="counter-label">Closings At Risk</div>
+  </div>
+  <div class="counter resolved-counter">
+    <div class="counter-value" id="cnt-resolved">0</div>
+    <div class="counter-label">Auto-Resolved</div>
+  </div>
+  <div class="counter escalated-counter">
+    <div class="counter-value" id="cnt-escalated">0</div>
+    <div class="counter-label">Escalated</div>
+  </div>
+  <div class="counter wow-counter">
+    <div class="counter-value" id="cnt-protected">0</div>
+    <div class="counter-label">Closings Protected</div>
+  </div>
+</div>
+
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
