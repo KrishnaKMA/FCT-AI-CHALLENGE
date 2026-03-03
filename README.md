@@ -1,4 +1,4 @@
-# Sentinel — FCT AIOps Agent
+#FCT AIOps Agent
 
 An autonomous incident response agent for FCT's real estate transaction platform. It monitors 7 services, detects anomalies, finds root causes, and takes action — with awareness of FCT's business calendar and FINTRAC compliance obligations.
 
